@@ -2,23 +2,17 @@ import { View, Text, StyleSheet } from "react-native";
 import { Button } from "./ui";
 
 type Props = {
-  icon: string;
+  icon: React.ReactNode;
   title: string;
   message: string;
   actionLabel?: string;
   onAction?: () => void;
 };
 
-export function EmptyState({
-  icon,
-  title,
-  message,
-  actionLabel,
-  onAction,
-}: Props) {
+export function EmptyState({ icon, title, message, actionLabel, onAction }: Props) {
   return (
     <View style={styles.container}>
-      <Text style={styles.icon}>{icon}</Text>
+      <View style={styles.iconWrapper}>{icon}</View>
       <Text style={styles.title}>{title}</Text>
       <Text style={styles.message}>{message}</Text>
       {actionLabel && onAction && (
@@ -35,8 +29,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     padding: 32,
   },
-  icon: {
-    fontSize: 48,
+  iconWrapper: {
     marginBottom: 16,
   },
   title: {

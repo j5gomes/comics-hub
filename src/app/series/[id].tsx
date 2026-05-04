@@ -1,15 +1,17 @@
-import { useEffect, useState } from "react";
+import { useState, useEffect, useCallback } from "react";
 import {
   View,
   Text,
   ScrollView,
   Pressable,
+  TextInput,
   Alert,
   StyleSheet,
+  ActivityIndicator,
   Dimensions,
 } from "react-native";
-import { useRouter, useLocalSearchParams, useNavigation } from "expo-router";
 import { Image } from "expo-image";
+import { useRouter, useLocalSearchParams, useNavigation } from "expo-router";
 import {
   useSeriesDetail,
   useComicsInSeries,
@@ -17,13 +19,58 @@ import {
   useDeleteSeries,
 } from "../../hooks/useSeries";
 import { SeriesCoverGrid } from "../../components/SeriesCoverGrid";
-import { Input, Select, Button } from "../../components/ui";
+import { PickerSheet } from "../../components/PickerSheet";
 import { usePublishers } from "../../hooks/usePublishers";
 import type { Comic } from "../../types";
+import type { SeriesFormData } from "../../types";
+
+const ACCENT = "#6366f1";
+const BORDER = "#e5e7eb";
+const BG = "#f8fafc";
+const CARD_BG = "#ffffff";
+const TEXT_PRIMARY = "#0f172a";
+const TEXT_SECONDARY = "#64748b";
+const TEXT_MUTED = "#94a3b8";
 
 const SCREEN_WIDTH = Dimensions.get("window").width;
 const COVER_GRID_SIZE = Math.min(SCREEN_WIDTH * 0.4, 180);
 const VOLUME_COVER_SIZE = 64;
+
+function SectionHeader({ title }: { title: string }) {
+  return <Text style={styles.sectionHeader}>{title}</Text>;
+}
+
+function DetailRow({
+  label,
+  value,
+  onPress,
+  last,
+}: {
+  label: string;
+  value: string;
+  onPress?: () => void;
+  last?: boolean;
+}) {
+  return (
+    <Pressable
+      onPress={onPress}
+      disabled={!onPress}
+      style={({ pressed }) => [
+        styles.row,
+        last && styles.rowLast,
+        pressed && onPress && styles.rowPressed,
+      ]}
+    >
+      <Text style={styles.rowLabel}>{label}</Text>
+      <View style={styles.rowRight}>
+        <Text style={[styles.rowValue, !value && styles.rowValueEmpty]}>
+          {value || "—"}
+        </Text>
+        {onPress && <Text style={styles.rowChevron}>›</Text>}
+      </View>
+    </Pressable>
+  );
+}
 
 function VolumeRow({ comic }: { comic: Comic }) {
   const router = useRouter();
@@ -34,7 +81,7 @@ function VolumeRow({ comic }: { comic: Comic }) {
   return (
     <Pressable
       onPress={() => router.push(`/comic/${comic.id}`)}
-      style={styles.volumeRow}
+      style={({ pressed }) => [styles.volumeRow, pressed && styles.volumeRowPressed]}
     >
       {comic.cover_image_local ? (
         <Image
@@ -74,102 +121,118 @@ export default function SeriesDetailScreen() {
 
   const [title, setTitle] = useState("");
   const [publisherId, setPublisherId] = useState("");
+  const [editingTitle, setEditingTitle] = useState(false);
+  const [pickerOpen, setPickerOpen] = useState(false);
 
   useEffect(() => {
-    if (seriesData) {
-      setTitle(seriesData.title);
-      setPublisherId(seriesData.publisher_id ?? "");
-      navigation.setOptions({ title: seriesData.title });
-    }
+    if (!seriesData) return;
+    setTitle(seriesData.title);
+    setPublisherId(seriesData.publisher_id ?? "");
+    navigation.setOptions({ title: seriesData.title });
   }, [seriesData, navigation]);
+
+  const buildFormData = useCallback(
+    (overrides: Partial<SeriesFormData> = {}): SeriesFormData => ({
+      title,
+      publisher_id: publisherId || null,
+      ...overrides,
+    }),
+    [title, publisherId]
+  );
+
+  const save = useCallback(
+    (overrides: Partial<SeriesFormData> = {}) =>
+      updateSeries.mutateAsync({ id, data: buildFormData(overrides) }),
+    [id, buildFormData, updateSeries]
+  );
+
+  const handleDelete = () =>
+    Alert.alert(
+      "Delete Series",
+      `Delete "${seriesData?.title}"? Comics in this series will not be deleted.`,
+      [
+        { text: "Cancel", style: "cancel" },
+        {
+          text: "Delete",
+          style: "destructive",
+          onPress: async () => { await deleteSeries.mutateAsync(id); router.back(); },
+        },
+      ]
+    );
+
+  if (isLoading || !seriesData) {
+    return <View style={styles.loading}><ActivityIndicator color={ACCENT} /></View>;
+  }
 
   const covers = (volumes ?? [])
     .filter((v) => !!v.cover_image_local)
     .slice(0, 4)
     .map((v) => v.cover_image_local!);
 
+  const publisherName = publishersList?.find((p) => p.id === publisherId)?.name ?? "";
   const publisherOptions = [
     { label: "None", value: "" },
     ...(publishersList?.map((p) => ({ label: p.name, value: p.id })) ?? []),
   ];
-
-  const handleSave = async () => {
-    if (!title.trim()) return;
-    await updateSeries.mutateAsync({
-      id,
-      data: { title: title.trim(), publisher_id: publisherId || null },
-    });
-  };
-
-  const handleDelete = () => {
-    Alert.alert(
-      "Delete Series",
-      `Are you sure you want to delete "${seriesData?.title}"? Comics in this series will not be deleted.`,
-      [
-        { text: "Cancel", style: "cancel" },
-        {
-          text: "Delete",
-          style: "destructive",
-          onPress: async () => {
-            await deleteSeries.mutateAsync(id);
-            router.back();
-          },
-        },
-      ]
-    );
-  };
-
-  if (isLoading || !seriesData) {
-    return <View style={styles.container} />;
-  }
+  const volumeCount = volumes?.length ?? 0;
 
   return (
-    <ScrollView
-      style={styles.container}
-      contentContainerStyle={styles.content}
-      keyboardShouldPersistTaps="handled"
-    >
-      {/* Header */}
-      <View style={styles.header}>
-        <View style={styles.coverGridWrapper}>
-          <SeriesCoverGrid covers={covers} size={COVER_GRID_SIZE} />
+    <>
+      <ScrollView
+        style={styles.container}
+        contentContainerStyle={styles.content}
+        keyboardShouldPersistTaps="handled"
+      >
+        {/* Header */}
+        <View style={styles.header}>
+          <View style={styles.coverGridWrapper}>
+            <SeriesCoverGrid covers={covers} size={COVER_GRID_SIZE} />
+          </View>
+          <View style={styles.headerInfo}>
+            {editingTitle ? (
+              <TextInput
+                style={styles.headerTitleInput}
+                value={title}
+                onChangeText={setTitle}
+                onBlur={() => {
+                  setEditingTitle(false);
+                  save({ title: title.trim() });
+                  navigation.setOptions({ title: title.trim() });
+                }}
+                onSubmitEditing={() => {
+                  setEditingTitle(false);
+                  save({ title: title.trim() });
+                  navigation.setOptions({ title: title.trim() });
+                }}
+                returnKeyType="done"
+                autoFocus
+                selectTextOnFocus
+              />
+            ) : (
+              <Pressable onPress={() => setEditingTitle(true)}>
+                <Text style={styles.headerTitle}>{title}</Text>
+              </Pressable>
+            )}
+            <Text style={styles.headerMeta}>
+              {volumeCount} {volumeCount === 1 ? "volume" : "volumes"}
+            </Text>
+          </View>
         </View>
-        <View style={styles.headerInfo}>
-          <Text style={styles.seriesTitle}>{seriesData.title}</Text>
-          <Text style={styles.seriesCount}>
-            {volumes?.length ?? 0}{" "}
-            {(volumes?.length ?? 0) === 1 ? "volume" : "volumes"}
-          </Text>
+
+        {/* Details */}
+        <SectionHeader title="Details" />
+        <View style={styles.card}>
+          <DetailRow
+            label="Publisher"
+            value={publisherName}
+            onPress={() => setPickerOpen(true)}
+            last
+          />
         </View>
-      </View>
 
-      {/* Edit fields */}
-      <View style={styles.section}>
-        <Text style={styles.sectionLabel}>Series Details</Text>
-        <Input
-          label="Title"
-          value={title}
-          onChangeText={setTitle}
-          placeholder="Series title"
-        />
-        <Select
-          label="Publisher"
-          options={publisherOptions}
-          value={publisherId}
-          onChange={setPublisherId}
-        />
-        <Button
-          title="Save Changes"
-          onPress={handleSave}
-          loading={updateSeries.isPending}
-          disabled={!title.trim()}
-        />
-      </View>
-
-      {/* Volumes */}
-      <View style={styles.section}>
-        <View style={styles.sectionHeader}>
-          <Text style={styles.sectionLabel}>Volumes</Text>
+        {/* Volumes */}
+        <View style={styles.volumesSectionHeader}>
+          <Text style={styles.volumesSectionLabel}>Volumes</Text>
           <Pressable
             onPress={() => router.push(`/comic/new?seriesId=${id}`)}
             style={styles.addButton}
@@ -191,73 +254,142 @@ export default function SeriesDetailScreen() {
             </Text>
           </View>
         )}
-      </View>
 
-      <Button
-        title="Delete Series"
-        variant="danger"
-        onPress={handleDelete}
-        loading={deleteSeries.isPending}
-        style={styles.deleteButton}
+        <Pressable onPress={handleDelete} style={styles.deleteButton}>
+          <Text style={styles.deleteButtonText}>Delete Series</Text>
+        </Pressable>
+      </ScrollView>
+
+      <PickerSheet
+        visible={pickerOpen}
+        title="Publisher"
+        options={publisherOptions}
+        value={publisherId}
+        onSelect={async (val) => {
+          setPublisherId(val);
+          setPickerOpen(false);
+          await save({ publisher_id: val || null });
+        }}
+        onClose={() => setPickerOpen(false)}
       />
-    </ScrollView>
+    </>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
+  loading: {
     flex: 1,
-    backgroundColor: "#f8fafc",
+    justifyContent: "center",
+    alignItems: "center",
+    backgroundColor: BG,
   },
-  content: {
-    paddingBottom: 32,
-  },
+  container: { flex: 1, backgroundColor: BG },
+  content: { paddingBottom: 48 },
+
   header: {
     flexDirection: "row",
     alignItems: "center",
     padding: 16,
     gap: 16,
-    backgroundColor: "#ffffff",
+    backgroundColor: CARD_BG,
     borderBottomWidth: 1,
-    borderBottomColor: "#e5e7eb",
+    borderBottomColor: BORDER,
   },
   coverGridWrapper: {
     borderRadius: 8,
     overflow: "hidden",
+    flexShrink: 0,
   },
-  headerInfo: {
-    flex: 1,
-    gap: 4,
-  },
-  seriesTitle: {
+  headerInfo: { flex: 1, gap: 4 },
+  headerTitle: {
     fontSize: 20,
     fontWeight: "700",
-    color: "#0f172a",
+    color: TEXT_PRIMARY,
+    lineHeight: 26,
   },
-  seriesCount: {
-    fontSize: 14,
-    color: "#64748b",
+  headerTitleInput: {
+    fontSize: 20,
+    fontWeight: "700",
+    color: TEXT_PRIMARY,
+    borderBottomWidth: 1.5,
+    borderBottomColor: ACCENT,
+    paddingBottom: 2,
   },
-  section: {
-    marginTop: 20,
-    paddingHorizontal: 16,
-  },
+  headerMeta: { fontSize: 14, color: TEXT_SECONDARY },
+
   sectionHeader: {
+    fontSize: 12,
+    fontWeight: "600",
+    color: TEXT_SECONDARY,
+    textTransform: "uppercase",
+    letterSpacing: 0.6,
+    paddingHorizontal: 16,
+    paddingTop: 24,
+    paddingBottom: 6,
+  },
+
+  card: {
+    marginHorizontal: 16,
+    backgroundColor: CARD_BG,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: BORDER,
+    overflow: "hidden",
+  },
+  row: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingHorizontal: 14,
+    paddingVertical: 13,
+    borderBottomWidth: 1,
+    borderBottomColor: BORDER,
+    minHeight: 50,
+  },
+  rowLast: { borderBottomWidth: 0 },
+  rowPressed: { backgroundColor: "#f9fafb" },
+  rowLabel: {
+    fontSize: 14,
+    fontWeight: "500",
+    color: TEXT_SECONDARY,
+    width: 112,
+    flexShrink: 0,
+  },
+  rowRight: {
+    flex: 1,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "flex-end",
+    gap: 4,
+  },
+  rowValue: {
+    fontSize: 14,
+    fontWeight: "500",
+    color: TEXT_PRIMARY,
+    textAlign: "right",
+    flexShrink: 1,
+  },
+  rowValueEmpty: { color: TEXT_MUTED },
+  rowChevron: { fontSize: 18, color: TEXT_MUTED, marginLeft: 2 },
+
+  volumesSectionHeader: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    marginBottom: 12,
+    paddingHorizontal: 16,
+    paddingTop: 24,
+    paddingBottom: 6,
   },
-  sectionLabel: {
-    fontSize: 14,
+  volumesSectionLabel: {
+    fontSize: 12,
     fontWeight: "600",
-    color: "#374151",
-    marginBottom: 12,
+    color: TEXT_SECONDARY,
+    textTransform: "uppercase",
+    letterSpacing: 0.6,
   },
   addButton: {
     paddingVertical: 6,
     paddingHorizontal: 12,
-    backgroundColor: "#6366f1",
+    backgroundColor: ACCENT,
     borderRadius: 8,
   },
   addButtonText: {
@@ -265,18 +397,24 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontWeight: "600",
   },
+
   volumeList: {
-    gap: 8,
+    marginHorizontal: 16,
+    marginTop: 0,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: BORDER,
+    overflow: "hidden",
+    backgroundColor: CARD_BG,
   },
   volumeRow: {
     flexDirection: "row",
     alignItems: "center",
-    backgroundColor: "#ffffff",
-    borderRadius: 10,
-    borderWidth: 1,
-    borderColor: "#e5e7eb",
-    overflow: "hidden",
+    backgroundColor: CARD_BG,
+    borderBottomWidth: 1,
+    borderBottomColor: BORDER,
   },
+  volumeRowPressed: { backgroundColor: "#f9fafb" },
   volumeCover: {
     width: VOLUME_COVER_SIZE,
     height: VOLUME_COVER_SIZE,
@@ -291,7 +429,7 @@ const styles = StyleSheet.create({
   volumeCoverInitial: {
     fontSize: 20,
     fontWeight: "700",
-    color: "#94a3b8",
+    color: TEXT_MUTED,
   },
   volumeInfo: {
     flex: 1,
@@ -300,35 +438,45 @@ const styles = StyleSheet.create({
   },
   volumeLabel: {
     fontSize: 12,
-    color: "#6366f1",
+    color: ACCENT,
     fontWeight: "600",
     marginBottom: 2,
   },
   volumeTitle: {
     fontSize: 14,
     fontWeight: "600",
-    color: "#0f172a",
+    color: TEXT_PRIMARY,
   },
   volumeChevron: {
     fontSize: 22,
-    color: "#94a3b8",
+    color: TEXT_MUTED,
     paddingRight: 12,
   },
+
   emptyVolumes: {
+    marginHorizontal: 16,
     padding: 20,
-    backgroundColor: "#ffffff",
-    borderRadius: 10,
+    backgroundColor: CARD_BG,
+    borderRadius: 12,
     borderWidth: 1,
-    borderColor: "#e5e7eb",
+    borderColor: BORDER,
     alignItems: "center",
   },
   emptyVolumesText: {
     fontSize: 14,
-    color: "#94a3b8",
+    color: TEXT_MUTED,
     textAlign: "center",
   },
+
   deleteButton: {
+    marginHorizontal: 16,
     marginTop: 32,
-    marginHorizontal: 0,
+    paddingVertical: 14,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: "#fca5a5",
+    alignItems: "center",
+    backgroundColor: "#fff5f5",
   },
+  deleteButtonText: { fontSize: 15, fontWeight: "600", color: "#ef4444" },
 });

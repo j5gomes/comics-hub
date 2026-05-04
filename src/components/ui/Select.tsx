@@ -1,4 +1,6 @@
+import { useState } from "react";
 import { View, Text, Pressable, StyleSheet } from "react-native";
+import { PickerSheet } from "../PickerSheet";
 
 type Option = { label: string; value: string };
 
@@ -7,34 +9,37 @@ type Props = {
   options: Option[];
   value: string;
   onChange: (value: string) => void;
+  placeholder?: string;
 };
 
-export function Select({ label, options, value, onChange }: Props) {
+export function Select({ label, options, value, onChange, placeholder }: Props) {
+  const [open, setOpen] = useState(false);
+  const selectedLabel = options.find((o) => o.value === value)?.label;
+
   return (
-    <View style={styles.container}>
-      <Text style={styles.label}>{label}</Text>
-      <View style={styles.options}>
-        {options.map((opt) => (
-          <Pressable
-            key={opt.value}
-            onPress={() => onChange(opt.value)}
-            style={[
-              styles.option,
-              value === opt.value && styles.optionSelected,
-            ]}
-          >
-            <Text
-              style={[
-                styles.optionText,
-                value === opt.value && styles.optionTextSelected,
-              ]}
-            >
-              {opt.label}
-            </Text>
-          </Pressable>
-        ))}
+    <>
+      <View style={styles.container}>
+        <Text style={styles.label}>{label}</Text>
+        <Pressable
+          onPress={() => setOpen(true)}
+          style={({ pressed }) => [styles.field, pressed && styles.fieldPressed]}
+        >
+          <Text style={[styles.value, !selectedLabel && styles.placeholder]}>
+            {selectedLabel ?? placeholder ?? "Select…"}
+          </Text>
+          <Text style={styles.chevron}>›</Text>
+        </Pressable>
       </View>
-    </View>
+
+      <PickerSheet
+        visible={open}
+        title={label}
+        options={options}
+        value={value}
+        onSelect={(val) => { onChange(val); setOpen(false); }}
+        onClose={() => setOpen(false)}
+      />
+    </>
   );
 }
 
@@ -48,29 +53,32 @@ const styles = StyleSheet.create({
     color: "#374151",
     marginBottom: 6,
   },
-  options: {
+  field: {
     flexDirection: "row",
-    flexWrap: "wrap",
-    gap: 8,
-  },
-  option: {
-    paddingVertical: 8,
-    paddingHorizontal: 16,
-    borderRadius: 20,
+    alignItems: "center",
+    justifyContent: "space-between",
     borderWidth: 1,
     borderColor: "#d1d5db",
+    borderRadius: 10,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
     backgroundColor: "#ffffff",
+    minHeight: 48,
   },
-  optionSelected: {
-    backgroundColor: "#6366f1",
-    borderColor: "#6366f1",
+  fieldPressed: {
+    backgroundColor: "#f9fafb",
   },
-  optionText: {
-    fontSize: 14,
-    color: "#374151",
+  value: {
+    fontSize: 16,
+    color: "#0f172a",
+    flex: 1,
   },
-  optionTextSelected: {
-    color: "#ffffff",
-    fontWeight: "600",
+  placeholder: {
+    color: "#94a3b8",
+  },
+  chevron: {
+    fontSize: 20,
+    color: "#94a3b8",
+    marginLeft: 8,
   },
 });

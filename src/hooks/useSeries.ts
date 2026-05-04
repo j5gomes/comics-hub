@@ -20,6 +20,7 @@ export function useSeriesList() {
           series_id: comics.series_id,
           cover_image_local: comics.cover_image_local,
           volume_number: comics.volume_number,
+          comic_type: comics.comic_type,
         })
         .from(comics)
         .where(and(isNull(comics.deleted_at), isNotNull(comics.series_id)))
@@ -28,6 +29,7 @@ export function useSeriesList() {
 
       const coversMap: Record<string, string[]> = {};
       const countMap: Record<string, number> = {};
+      const typesMap: Record<string, Set<string>> = {};
       for (const comic of seriesComics) {
         if (!comic.series_id) continue;
         countMap[comic.series_id] = (countMap[comic.series_id] ?? 0) + 1;
@@ -35,12 +37,15 @@ export function useSeriesList() {
         if (coversMap[comic.series_id].length < 4 && comic.cover_image_local) {
           coversMap[comic.series_id].push(comic.cover_image_local);
         }
+        if (!typesMap[comic.series_id]) typesMap[comic.series_id] = new Set();
+        typesMap[comic.series_id].add(comic.comic_type);
       }
 
       return seriesList.map((s) => ({
         ...s,
         covers: coversMap[s.id] ?? [],
         volumeCount: countMap[s.id] ?? 0,
+        comicTypes: Array.from(typesMap[s.id] ?? []),
       }));
     },
   });

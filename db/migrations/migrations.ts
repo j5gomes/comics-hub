@@ -127,6 +127,9 @@ DROP TABLE \`authors\`;
 --> statement-breakpoint
 ALTER TABLE \`authors_rebuild\` RENAME TO \`authors\`;`;
 
+const m0006 = `
+ALTER TABLE \`publishers\` ADD COLUMN \`logo_local\` text;`;
+
 export default {
   journal: {
     entries: [
@@ -136,6 +139,7 @@ export default {
       { idx: 3, when: 1714300000, tag: "0003_author_photos", breakpoints: true },
       { idx: 4, when: 1714400000, tag: "0004_fix_authors_roles", breakpoints: true },
       { idx: 5, when: 1714500000, tag: "0005_series", breakpoints: true },
+      { idx: 6, when: 1714600000, tag: "0006_publisher_logo", breakpoints: true },
     ],
   },
   migrations: {
@@ -145,5 +149,6 @@ export default {
     m0003,
     m0004,
     m0005,
+    m0006,
   },
 };

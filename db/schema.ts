@@ -16,6 +16,7 @@ export const publishers = sqliteTable("publishers", {
   name: text("name").notNull(),
   languages: text("languages").notNull().default("[]"),
   comic_types: text("comic_types").notNull().default("[]"),
+  logo_local: text("logo_local"),
   created_at: text("created_at").notNull(),
   updated_at: text("updated_at").notNull(),
   deleted_at: text("deleted_at"),

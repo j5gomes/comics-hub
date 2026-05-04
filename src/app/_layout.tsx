@@ -58,7 +58,7 @@ export default function RootLayout() {
             />
             <Stack.Screen
               name="comic/[id]"
-              options={{ title: "Edit Comic", presentation: "modal" }}
+              options={{ title: "" }}
             />
             <Stack.Screen
               name="publishers/index"

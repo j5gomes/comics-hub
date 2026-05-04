@@ -101,3 +101,54 @@ export async function deleteAuthorPhoto(id: string) {
     file.delete();
   }
 }
+
+// --- Publisher logos ---
+
+const PUBLISHER_LOGOS_DIR_NAME = "publisher_logos";
+
+function getPublisherLogosDir(): Directory {
+  return new Directory(Paths.document, PUBLISHER_LOGOS_DIR_NAME);
+}
+
+export function getPublisherLogoPath(id: string): string {
+  return new File(getPublisherLogosDir(), `${id}.jpg`).uri;
+}
+
+export async function ensurePublisherLogosDir() {
+  const dir = getPublisherLogosDir();
+  if (!dir.exists) {
+    dir.create();
+  }
+}
+
+export async function processAndStorePublisherLogo(
+  uri: string,
+  id: string
+): Promise<string> {
+  await ensurePublisherLogosDir();
+
+  const result = await manipulateAsync(
+    uri,
+    [{ resize: { width: 400 } }],
+    { compress: 0.85, format: SaveFormat.JPEG }
+  );
+
+  const destPath = getPublisherLogoPath(id);
+  const sourceFile = new File(result.uri);
+  const destFile = new File(destPath);
+
+  if (destFile.exists) {
+    destFile.delete();
+  }
+
+  sourceFile.move(destFile);
+
+  return destPath;
+}
+
+export async function deletePublisherLogo(id: string) {
+  const file = new File(getPublisherLogoPath(id));
+  if (file.exists) {
+    file.delete();
+  }
+}

@@ -31,6 +31,7 @@ export function PublisherForm({ initialData, onSubmit, isLoading, footer }: Prop
       name: name.trim(),
       languages,
       comic_types: comicTypes,
+      logo_local: null,
     });
   };
 

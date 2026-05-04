@@ -45,6 +45,7 @@ export function useCreatePublisher() {
         name: data.name,
         languages: JSON.stringify(data.languages),
         comic_types: JSON.stringify(data.comic_types),
+        logo_local: data.logo_local ?? null,
         created_at: now,
         updated_at: now,
         sync_status: "pending" as const,
@@ -89,6 +90,7 @@ export function useUpdatePublisher() {
         name: data.name,
         languages: JSON.stringify(data.languages),
         comic_types: JSON.stringify(data.comic_types),
+        logo_local: data.logo_local ?? null,
         updated_at: now,
         sync_status: "pending" as const,
       };

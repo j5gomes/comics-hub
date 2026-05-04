@@ -42,6 +42,7 @@ export type PublisherFormData = {
   name: string;
   languages: string[];
   comic_types: string[];
+  logo_local: string | null;
 };
 
 export type StoreFormData = {

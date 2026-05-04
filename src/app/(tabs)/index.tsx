@@ -3,11 +3,12 @@ import {
   View,
   FlatList,
   Pressable,
-  Text,
   StyleSheet,
   RefreshControl,
+  Text,
 } from "react-native";
 import { useRouter } from "expo-router";
+import { Library, Plus } from "lucide-react-native";
 import { useComics, useComicStats } from "../../hooks/useComics";
 import { useComicAuthorsSummary } from "../../hooks/useAuthors";
 import { ComicCard } from "../../components/ComicCard";

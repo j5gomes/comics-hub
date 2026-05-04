@@ -1,19 +1,5 @@
 import { Tabs } from "expo-router";
-import { Text } from "react-native";
-
-function TabIcon({ name, focused }: { name: string; focused: boolean }) {
-  const icons: Record<string, string> = {
-    collection: "📚",
-    series: "📖",
-    wishlist: "⭐",
-    settings: "⚙️",
-  };
-  return (
-    <Text style={{ fontSize: 22, opacity: focused ? 1 : 0.5 }}>
-      {icons[name] || "📄"}
-    </Text>
-  );
-}
+import { Library, BookOpen, Heart, Settings } from "lucide-react-native";
 
 export default function TabLayout() {
   return (
@@ -34,36 +20,28 @@ export default function TabLayout() {
         name="index"
         options={{
           title: "Collection",
-          tabBarIcon: ({ focused }) => (
-            <TabIcon name="collection" focused={focused} />
-          ),
+          tabBarIcon: ({ color, size }) => <Library size={size} color={color} />,
         }}
       />
       <Tabs.Screen
         name="series"
         options={{
           title: "Series",
-          tabBarIcon: ({ focused }) => (
-            <TabIcon name="series" focused={focused} />
-          ),
+          tabBarIcon: ({ color, size }) => <BookOpen size={size} color={color} />,
         }}
       />
       <Tabs.Screen
         name="wishlist"
         options={{
           title: "Wishlist",
-          tabBarIcon: ({ focused }) => (
-            <TabIcon name="wishlist" focused={focused} />
-          ),
+          tabBarIcon: ({ color, size }) => <Heart size={size} color={color} />,
         }}
       />
       <Tabs.Screen
         name="settings"
         options={{
           title: "Settings",
-          tabBarIcon: ({ focused }) => (
-            <TabIcon name="settings" focused={focused} />
-          ),
+          tabBarIcon: ({ color, size }) => <Settings size={size} color={color} />,
         }}
       />
     </Tabs>

@@ -8,10 +8,11 @@ import {
   RefreshControl,
 } from "react-native";
 import { useRouter } from "expo-router";
-import { Image } from "expo-image";
 import { useSeriesList } from "../../hooks/useSeries";
 import { SeriesCoverGrid } from "../../components/SeriesCoverGrid";
+import { FilterBar } from "../../components/FilterBar";
 import { EmptyState } from "../../components/EmptyState";
+import type { FilterOption } from "../../lib/constants";
 
 const COVER_SIZE = 88;
 
@@ -45,6 +46,7 @@ function SeriesCard({ item }: { item: SeriesItem }) {
 export default function SeriesScreen() {
   const router = useRouter();
   const { data: seriesList, isLoading, refetch } = useSeriesList();
+  const [filter, setFilter] = useState<FilterOption>("all");
   const [refreshing, setRefreshing] = useState(false);
 
   const onRefresh = useCallback(async () => {
@@ -53,10 +55,16 @@ export default function SeriesScreen() {
     setRefreshing(false);
   }, [refetch]);
 
+  const filtered =
+    filter === "all"
+      ? seriesList
+      : seriesList?.filter((s) => s.comicTypes.includes(filter));
+
   return (
     <View style={styles.container}>
+      <FilterBar value={filter} onChange={setFilter} />
       <FlatList
-        data={seriesList}
+        data={filtered}
         keyExtractor={(item) => item.id}
         contentContainerStyle={styles.list}
         renderItem={({ item }) => <SeriesCard item={item} />}
@@ -68,7 +76,8 @@ export default function SeriesScreen() {
           seriesList && seriesList.length > 0 ? (
             <View style={styles.statsHeader}>
               <Text style={styles.statsTotal}>
-                {seriesList.length} {seriesList.length === 1 ? "Series" : "Series"}
+                {seriesList.length}{" "}
+                {seriesList.length === 1 ? "Series" : "Series"}
               </Text>
             </View>
           ) : null
@@ -85,10 +94,7 @@ export default function SeriesScreen() {
           ) : null
         }
       />
-      <Pressable
-        onPress={() => router.push("/series/new")}
-        style={styles.fab}
-      >
+      <Pressable onPress={() => router.push("/series/new")} style={styles.fab}>
         <Text style={styles.fabText}>+</Text>
       </Pressable>
     </View>
