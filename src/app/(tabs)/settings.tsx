@@ -1,15 +1,97 @@
 import { useState } from "react";
-import { View, Text, Pressable, StyleSheet, Alert } from "react-native";
+import { ScrollView, View, Text, Pressable, StyleSheet, Alert } from "react-native";
+import * as Sharing from "expo-sharing";
 import { useRouter } from "expo-router";
-import { useQueryClient } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { sql } from "drizzle-orm";
 import { Card } from "../../components/ui";
 import { seedDatabase } from "../../lib/seed";
 import { BookUser, Building2, Store } from "lucide-react-native";
+import { db, expoDb, DATABASE_PATH } from "../../../db";
+import {
+  comics,
+  comicAuthors,
+  series,
+  publishers,
+  stores,
+  authors,
+  syncOutbox,
+  syncMeta,
+} from "../../../db/schema";
 
 export default function SettingsScreen() {
   const router = useRouter();
   const queryClient = useQueryClient();
   const [seeding, setSeeding] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+  const [sharing, setSharing] = useState(false);
+
+  const handleShareDb = async () => {
+    const available = await Sharing.isAvailableAsync();
+    if (!available) {
+      Alert.alert("Sharing not available", "Your device does not support file sharing.");
+      return;
+    }
+    setSharing(true);
+    try {
+      await Sharing.shareAsync(`file://${DATABASE_PATH}`, {
+        mimeType: "application/octet-stream",
+        dialogTitle: "Share comics-hub.db",
+        UTI: "public.database",
+      });
+    } catch (e: any) {
+      Alert.alert("Error", e.message ?? "Could not share the database.");
+    } finally {
+      setSharing(false);
+    }
+  };
+
+  const { data: hasData } = useQuery({
+    queryKey: ["hasData"],
+    queryFn: () => {
+      const row = db
+        .select({ count: sql<number>`count(*)` })
+        .from(comics)
+        .get();
+      return (row?.count ?? 0) > 0;
+    },
+  });
+
+  const handleDeleteAll = () => {
+    Alert.alert(
+      "Delete All Data",
+      "This will permanently delete every comic, series, author, publisher, store and sync record. This cannot be undone.",
+      [
+        { text: "Cancel", style: "cancel" },
+        {
+          text: "Delete Everything",
+          style: "destructive",
+          onPress: async () => {
+            setDeleting(true);
+            try {
+              expoDb.withTransactionSync(() => {
+                db.delete(comicAuthors).run();
+                db.delete(comics).run();
+                db.delete(series).run();
+                db.delete(authors).run();
+                db.delete(publishers).run();
+                db.delete(stores).run();
+                db.delete(syncOutbox).run();
+                db.delete(syncMeta).run();
+              });
+              queryClient.clear();
+              queryClient.invalidateQueries({ queryKey: ["hasData"] });
+              Alert.alert("Done", "All data has been deleted.");
+            } catch (e: any) {
+              Alert.alert("Error", e.message ?? "Delete failed.");
+            } finally {
+              setDeleting(false);
+            }
+          },
+        },
+      ],
+    );
+  };
 
   const handleSeed = () => {
     Alert.alert(
@@ -37,7 +119,7 @@ export default function SettingsScreen() {
   };
 
   return (
-    <View style={styles.container}>
+    <ScrollView style={styles.container} contentContainerStyle={styles.content}>
       <Text style={styles.sectionTitle}>Data Management</Text>
 
       <Pressable onPress={() => router.push("/publishers/")}>
@@ -109,6 +191,10 @@ export default function SettingsScreen() {
         <Text style={styles.aboutSubtext}>
           Local-first comic collection manager
         </Text>
+        <Text style={[styles.cardTitle, { marginTop: 16 }]}>Database Path</Text>
+        <Text selectable style={styles.dbPath}>
+          {DATABASE_PATH}
+        </Text>
       </Card>
 
       <Text style={[styles.sectionTitle, styles.sectionTitleMargin]}>
@@ -129,7 +215,43 @@ export default function SettingsScreen() {
           </View>
         </Card>
       </Pressable>
-    </View>
+
+      <Pressable onPress={handleShareDb} disabled={sharing}>
+        <Card style={styles.card}>
+          <View style={styles.cardRow}>
+            <Text style={styles.cardIcon}>📤</Text>
+            <View style={styles.cardContent}>
+              <Text style={styles.cardTitle}>
+                {sharing ? "Sharing…" : "Share Database"}
+              </Text>
+              <Text style={styles.cardSubtitle}>
+                Export the SQLite file to your Mac or Files
+              </Text>
+            </View>
+          </View>
+        </Card>
+      </Pressable>
+
+      <Pressable
+        onPress={handleDeleteAll}
+        disabled={deleting || !hasData}
+        style={{ opacity: hasData ? 1 : 0.4 }}
+      >
+        <Card style={{ ...styles.card, ...styles.dangerCard }}>
+          <View style={styles.cardRow}>
+            <Text style={styles.cardIcon}>🗑️</Text>
+            <View style={styles.cardContent}>
+              <Text style={[styles.cardTitle, styles.dangerText]}>
+                {deleting ? "Deleting…" : "Delete All Data"}
+              </Text>
+              <Text style={styles.cardSubtitle}>
+                Permanently wipe the entire local database
+              </Text>
+            </View>
+          </View>
+        </Card>
+      </Pressable>
+    </ScrollView>
   );
 }
 
@@ -137,7 +259,10 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: "#f8fafc",
+  },
+  content: {
     padding: 16,
+    paddingBottom: 48,
   },
   sectionTitle: {
     fontSize: 13,
@@ -193,5 +318,20 @@ const styles = StyleSheet.create({
     fontSize: 13,
     color: "#64748b",
     marginTop: 4,
+  },
+  dbPath: {
+    fontSize: 11,
+    color: "#64748b",
+    marginTop: 4,
+    fontFamily: "monospace",
+    lineHeight: 16,
+  },
+  dangerCard: {
+    borderWidth: 1,
+    borderColor: "#fca5a5",
+    backgroundColor: "#fff5f5",
+  },
+  dangerText: {
+    color: "#ef4444",
   },
 });

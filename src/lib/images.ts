@@ -102,6 +102,47 @@ export async function deleteAuthorPhoto(id: string) {
   }
 }
 
+// --- Store logos ---
+
+const STORE_LOGOS_DIR_NAME = "store_logos";
+
+function getStoreLogosDir(): Directory {
+  return new Directory(Paths.document, STORE_LOGOS_DIR_NAME);
+}
+
+export function getStoreLogoPath(id: string): string {
+  return new File(getStoreLogosDir(), `${id}.jpg`).uri;
+}
+
+async function ensureStoreLogosDir() {
+  const dir = getStoreLogosDir();
+  if (!dir.exists) dir.create();
+}
+
+export async function processAndStoreStoreLogo(uri: string, id: string): Promise<string> {
+  await ensureStoreLogosDir();
+
+  const result = await manipulateAsync(
+    uri,
+    [{ resize: { width: 400 } }],
+    { compress: 0.85, format: SaveFormat.JPEG }
+  );
+
+  const destPath = getStoreLogoPath(id);
+  const sourceFile = new File(result.uri);
+  const destFile = new File(destPath);
+
+  if (destFile.exists) destFile.delete();
+  sourceFile.move(destFile);
+
+  return destPath;
+}
+
+export async function deleteStoreLogo(id: string) {
+  const file = new File(getStoreLogoPath(id));
+  if (file.exists) file.delete();
+}
+
 // --- Publisher logos ---
 
 const PUBLISHER_LOGOS_DIR_NAME = "publisher_logos";

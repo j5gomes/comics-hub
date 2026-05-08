@@ -145,6 +145,9 @@ ALTER TABLE \`comics\` ADD COLUMN \`bought_at\` text;
 --> statement-breakpoint
 ALTER TABLE \`comics\` ADD COLUMN \`page_count\` integer;`;
 
+const m0008 = `
+ALTER TABLE \`stores\` ADD COLUMN \`logo_local\` text;`;
+
 export default {
   journal: {
     entries: [
@@ -156,6 +159,7 @@ export default {
       { idx: 5, when: 1714500000, tag: "0005_series", breakpoints: true },
       { idx: 6, when: 1714600000, tag: "0006_publisher_logo", breakpoints: true },
       { idx: 7, when: 1714700000, tag: "0007_comics_extra_fields", breakpoints: true },
+      { idx: 8, when: 1714800000, tag: "0008_store_logo", breakpoints: true },
     ],
   },
   migrations: {
@@ -167,5 +171,6 @@ export default {
     m0005,
     m0006,
     m0007,
+    m0008,
   },
 };

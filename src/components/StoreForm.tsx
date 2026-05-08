@@ -1,6 +1,8 @@
 import { useState } from "react";
 import { ScrollView, StyleSheet } from "react-native";
 import { Input, Select, Button } from "./ui";
+import { ImagePickerButton } from "./ImagePickerButton";
+import { useImagePicker } from "../hooks/useImagePicker";
 import { STORE_TYPES, STORE_TYPE_LABELS } from "../lib/constants";
 import type { StoreFormData, Store } from "../types";
 
@@ -14,9 +16,14 @@ type Props = {
 export function StoreForm({ initialData, onSubmit, isLoading, footer }: Props) {
   const [name, setName] = useState(initialData?.name ?? "");
   const [location, setLocation] = useState(initialData?.location ?? "");
-  const [storeType, setStoreType] = useState(
-    initialData?.store_type ?? "physical"
-  );
+  const [storeType, setStoreType] = useState(initialData?.store_type ?? "physical");
+
+  const { imageUri, setImageUri, pickFromGallery, pickFromCamera, clearImage } =
+    useImagePicker([1, 1]);
+
+  useState(() => {
+    if (initialData?.logo_local) setImageUri(initialData.logo_local);
+  });
 
   const handleSubmit = () => {
     if (!name.trim()) return;
@@ -24,6 +31,7 @@ export function StoreForm({ initialData, onSubmit, isLoading, footer }: Props) {
       name: name.trim(),
       location: location.trim(),
       store_type: storeType,
+      logo_local: imageUri,
     });
   };
 
@@ -33,6 +41,13 @@ export function StoreForm({ initialData, onSubmit, isLoading, footer }: Props) {
       contentContainerStyle={styles.content}
       keyboardShouldPersistTaps="handled"
     >
+      <ImagePickerButton
+        imageUri={imageUri}
+        onPickFromGallery={pickFromGallery}
+        onPickFromCamera={pickFromCamera}
+        onClear={clearImage}
+      />
+
       <Input
         label="Name"
         value={name}

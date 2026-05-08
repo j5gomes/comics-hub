@@ -45,6 +45,7 @@ export function useCreateStore() {
         name: data.name,
         location: data.location || null,
         store_type: data.store_type,
+        logo_local: data.logo_local,
         created_at: now,
         updated_at: now,
         sync_status: "pending" as const,
@@ -83,6 +84,7 @@ export function useUpdateStore() {
         name: data.name,
         location: data.location || null,
         store_type: data.store_type,
+        logo_local: data.logo_local,
         updated_at: now,
         sync_status: "pending" as const,
       };

@@ -9,9 +9,13 @@ import {
   StyleSheet,
   ActivityIndicator,
 } from "react-native";
+import { Image } from "expo-image";
 import { useRouter, useLocalSearchParams, useNavigation } from "expo-router";
 import { useStore, useUpdateStore, useDeleteStore } from "../../hooks/useStores";
 import { PickerSheet } from "../../components/PickerSheet";
+import { useImagePicker } from "../../hooks/useImagePicker";
+import { processAndStoreStoreLogo } from "../../lib/images";
+import { showPhotoSourcePicker } from "../../lib/photoSource";
 import { STORE_TYPES, STORE_TYPE_LABELS } from "../../lib/constants";
 import type { StoreFormData } from "../../types";
 
@@ -22,6 +26,7 @@ const CARD_BG = "#ffffff";
 const TEXT_PRIMARY = "#0f172a";
 const TEXT_SECONDARY = "#64748b";
 const TEXT_MUTED = "#94a3b8";
+const LOGO_SIZE = 64;
 
 function SectionHeader({ title }: { title: string }) {
   return <Text style={styles.sectionHeader}>{title}</Text>;
@@ -101,6 +106,8 @@ export default function EditStoreScreen() {
   const { data: store, isLoading } = useStore(id);
   const updateStore = useUpdateStore();
   const deleteStore = useDeleteStore();
+  const { imageUri, setImageUri, pickFromGallery, pickFromCamera, clearImage } =
+    useImagePicker([1, 1]);
 
   const [name, setName] = useState("");
   const [location, setLocation] = useState("");
@@ -113,6 +120,7 @@ export default function EditStoreScreen() {
     setName(store.name);
     setLocation(store.location ?? "");
     setStoreType(store.store_type);
+    setImageUri(store.logo_local ?? null);
     navigation.setOptions({ title: store.name });
   }, [store, navigation]);
 
@@ -121,9 +129,10 @@ export default function EditStoreScreen() {
       name,
       location,
       store_type: storeType,
+      logo_local: imageUri,
       ...overrides,
     }),
-    [name, location, storeType]
+    [name, location, storeType, imageUri]
   );
 
   const save = useCallback(
@@ -131,6 +140,18 @@ export default function EditStoreScreen() {
       updateStore.mutateAsync({ id, data: buildFormData(overrides) }),
     [id, buildFormData, updateStore]
   );
+
+  const prevLogoUri = useRef<string | null>(null);
+  useEffect(() => {
+    if (!imageUri || imageUri === prevLogoUri.current) return;
+    prevLogoUri.current = imageUri;
+    if (imageUri.includes("store_logos/")) return;
+    (async () => {
+      const processed = await processAndStoreStoreLogo(imageUri, id);
+      setImageUri(processed);
+      await save({ logo_local: processed });
+    })();
+  }, [imageUri]);
 
   const handleDelete = () =>
     Alert.alert("Delete Store", `Delete "${store?.name}"? This cannot be undone.`, [
@@ -157,9 +178,38 @@ export default function EditStoreScreen() {
       >
         {/* Header */}
         <View style={styles.header}>
-          <View style={styles.headerIcon}>
-            <Text style={styles.headerIconText}>🏪</Text>
+          <View style={styles.logoWrapper}>
+            <Pressable style={styles.logoPressable}>
+              {imageUri ? (
+                <Image
+                  source={{ uri: imageUri }}
+                  style={styles.logo}
+                  contentFit="cover"
+                  transition={200}
+                />
+              ) : (
+                <View style={styles.logoPlaceholder}>
+                  <Text style={styles.logoInitial}>
+                    {name.charAt(0).toUpperCase()}
+                  </Text>
+                </View>
+              )}
+            </Pressable>
+            <Pressable
+              onPress={() =>
+                showPhotoSourcePicker(!!imageUri, async (source) => {
+                  if (source === "gallery") await pickFromGallery();
+                  else if (source === "camera") await pickFromCamera();
+                  else if (source === "remove") { clearImage(); await save({ logo_local: null }); }
+                })
+              }
+              style={styles.logoEditBtn}
+              hitSlop={6}
+            >
+              <Text style={styles.logoEditIcon}>✎</Text>
+            </Pressable>
           </View>
+
           <View style={styles.headerInfo}>
             {editingField === "name" ? (
               <TextInput
@@ -248,16 +298,43 @@ const styles = StyleSheet.create({
     borderBottomColor: BORDER,
     alignItems: "center",
   },
-  headerIcon: {
-    width: 64,
-    height: 64,
+  logoWrapper: { position: "relative", flexShrink: 0 },
+  logoPressable: {
+    borderRadius: 16,
+    overflow: "hidden",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.08,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  logo: {
+    width: LOGO_SIZE,
+    height: LOGO_SIZE,
+    borderRadius: 16,
+  },
+  logoPlaceholder: {
+    width: LOGO_SIZE,
+    height: LOGO_SIZE,
     borderRadius: 16,
     backgroundColor: "#f1f5f9",
     justifyContent: "center",
     alignItems: "center",
-    flexShrink: 0,
   },
-  headerIconText: { fontSize: 32 },
+  logoInitial: { fontSize: 28, fontWeight: "700", color: TEXT_MUTED },
+  logoEditBtn: {
+    position: "absolute",
+    bottom: 0,
+    right: 0,
+    width: 22,
+    height: 22,
+    borderRadius: 11,
+    backgroundColor: "rgba(0,0,0,0.6)",
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  logoEditIcon: { color: "#fff", fontSize: 11 },
+
   headerInfo: { flex: 1, gap: 4 },
   headerTitle: {
     fontSize: 20,

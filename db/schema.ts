@@ -29,6 +29,7 @@ export const stores = sqliteTable("stores", {
   name: text("name").notNull(),
   location: text("location"),
   store_type: text("store_type").notNull().default("physical"),
+  logo_local: text("logo_local"),
   created_at: text("created_at").notNull(),
   updated_at: text("updated_at").notNull(),
   deleted_at: text("deleted_at"),

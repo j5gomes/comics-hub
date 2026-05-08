@@ -49,6 +49,7 @@ export type StoreFormData = {
   name: string;
   location: string;
   store_type: string;
+  logo_local: string | null;
 };
 
 export type AuthorFormData = {
