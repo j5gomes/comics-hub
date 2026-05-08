@@ -70,4 +70,11 @@ export type ComicFormData = {
   series_id: string | null;
   volume_number: number | null;
   volume_name: string | null;
+  published_at: string | null;
+  price: number | null;
+  rating: number | null;
+  notes: string | null;
+  binding: string | null;
+  bought_at: string | null;
+  page_count: number | null;
 };

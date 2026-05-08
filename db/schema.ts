@@ -1,4 +1,4 @@
-import { sqliteTable, text, integer } from "drizzle-orm/sqlite-core";
+import { sqliteTable, text, integer, real } from "drizzle-orm/sqlite-core";
 
 export const series = sqliteTable("series", {
   id: text("id").primaryKey(),
@@ -48,6 +48,13 @@ export const comics = sqliteTable("comics", {
   volume_name: text("volume_name"),
   cover_image_local: text("cover_image_local"),
   cover_image_remote: text("cover_image_remote"),
+  published_at: text("published_at"),
+  price: real("price"),
+  rating: integer("rating"),
+  notes: text("notes"),
+  binding: text("binding"),
+  bought_at: text("bought_at"),
+  page_count: integer("page_count"),
   created_at: text("created_at").notNull(),
   updated_at: text("updated_at").notNull(),
   deleted_at: text("deleted_at"),

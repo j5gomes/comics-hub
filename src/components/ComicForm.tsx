@@ -1,9 +1,10 @@
 import { useState, useEffect } from "react";
-import { View, ScrollView, Pressable, Text, StyleSheet } from "react-native";
+import { View, ScrollView, Pressable, Text, TextInput, StyleSheet } from "react-native";
 import { Image } from "expo-image";
 import { Input, Select, Button } from "./ui";
 import { ImagePickerButton } from "./ImagePickerButton";
 import { AuthorPickerModal } from "./AuthorPickerModal";
+import { DatePickerSheet } from "./DatePickerSheet";
 import { useImagePicker } from "../hooks/useImagePicker";
 import { usePublishers } from "../hooks/usePublishers";
 import { useStores } from "../hooks/useStores";
@@ -15,6 +16,9 @@ import {
   COMIC_STATUSES,
   AUTHOR_ROLES,
   AUTHOR_ROLE_LABELS,
+  BINDING_TYPES,
+  BINDING_TYPE_LABELS,
+  MONTH_OPTIONS,
 } from "../lib/constants";
 import type { AuthorRole } from "../lib/constants";
 import type { ComicFormData, Comic } from "../types";
@@ -26,6 +30,18 @@ type Props = {
   footer?: React.ReactNode;
   defaultSeriesId?: string;
 };
+
+function formatMonthYear(value: string): string {
+  const [y, m] = value.split("-");
+  const monthLabel = MONTH_OPTIONS.find((mo) => mo.value === m)?.label;
+  return monthLabel ? `${monthLabel} ${y}` : value;
+}
+
+function formatFullDate(value: string): string {
+  const [y, m, d] = value.split("-");
+  const monthLabel = MONTH_OPTIONS.find((mo) => mo.value === m)?.label;
+  return monthLabel ? `${parseInt(d)} ${monthLabel} ${y}` : value;
+}
 
 export function ComicForm({ initialData, onSubmit, isLoading, footer, defaultSeriesId }: Props) {
   const [title, setTitle] = useState(initialData?.title ?? "");
@@ -44,6 +60,19 @@ export function ComicForm({ initialData, onSubmit, isLoading, footer, defaultSer
     initialData?.volume_number != null ? String(initialData.volume_number) : ""
   );
   const [volumeName, setVolumeName] = useState(initialData?.volume_name ?? "");
+  const [publishedAt, setPublishedAt] = useState<string | null>(initialData?.published_at ?? null);
+  const [showPublishedPicker, setShowPublishedPicker] = useState(false);
+  const [price, setPrice] = useState(
+    initialData?.price != null ? String(initialData.price) : ""
+  );
+  const [rating, setRating] = useState<number | null>(initialData?.rating ?? null);
+  const [notes, setNotes] = useState(initialData?.notes ?? "");
+  const [binding, setBinding] = useState(initialData?.binding ?? "");
+  const [boughtAt, setBoughtAt] = useState<string | null>(initialData?.bought_at ?? null);
+  const [showBoughtAtPicker, setShowBoughtAtPicker] = useState(false);
+  const [pageCount, setPageCount] = useState(
+    initialData?.page_count != null ? String(initialData.page_count) : ""
+  );
 
   const { imageUri, setImageUri, pickFromGallery, pickFromCamera, clearImage } =
     useImagePicker();
@@ -113,6 +142,8 @@ export function ComicForm({ initialData, onSubmit, isLoading, footer, defaultSer
     const parsedVolumeNumber = volumeNumber.trim()
       ? parseInt(volumeNumber.trim(), 10)
       : null;
+    const parsedPrice = price.trim() ? parseFloat(price.trim()) : null;
+    const parsedPageCount = pageCount.trim() ? parseInt(pageCount.trim(), 10) : null;
     onSubmit({
       title: title.trim(),
       comic_type: comicType,
@@ -126,6 +157,13 @@ export function ComicForm({ initialData, onSubmit, isLoading, footer, defaultSer
       series_id: seriesId || null,
       volume_number: Number.isNaN(parsedVolumeNumber) ? null : parsedVolumeNumber,
       volume_name: volumeName.trim() || null,
+      published_at: publishedAt,
+      price: parsedPrice != null && !Number.isNaN(parsedPrice) ? parsedPrice : null,
+      rating,
+      notes: notes.trim() || null,
+      binding: binding || null,
+      bought_at: boughtAt,
+      page_count: parsedPageCount != null && !Number.isNaN(parsedPageCount) ? parsedPageCount : null,
     });
   };
 
@@ -277,6 +315,112 @@ export function ComicForm({ initialData, onSubmit, isLoading, footer, defaultSer
         onClose={() => setPickerRole(null)}
       />
 
+      {/* Details Section */}
+      <Text style={styles.sectionLabel}>Details</Text>
+
+      <View style={styles.dateFieldContainer}>
+        <Text style={styles.dateFieldLabel}>Published</Text>
+        <Pressable
+          style={({ pressed }) => [styles.dateField, pressed && styles.dateFieldPressed]}
+          onPress={() => setShowPublishedPicker(true)}
+        >
+          <Text style={[styles.dateFieldValue, !publishedAt && styles.dateFieldPlaceholder]}>
+            {publishedAt ? formatMonthYear(publishedAt) : "Select month & year…"}
+          </Text>
+          <Text style={styles.dateFieldChevron}>›</Text>
+        </Pressable>
+      </View>
+
+      <DatePickerSheet
+        visible={showPublishedPicker}
+        title="Published"
+        mode="month-year"
+        value={publishedAt}
+        onDone={setPublishedAt}
+        onClear={() => setPublishedAt(null)}
+        onClose={() => setShowPublishedPicker(false)}
+      />
+
+      <Select
+        label="Binding"
+        options={[
+          { label: "None", value: "" },
+          ...BINDING_TYPES.map((b) => ({ label: BINDING_TYPE_LABELS[b], value: b })),
+        ]}
+        value={binding}
+        onChange={setBinding}
+      />
+
+      <Input
+        label="Number of Pages"
+        value={pageCount}
+        onChangeText={setPageCount}
+        placeholder="e.g. 128"
+        keyboardType="numeric"
+      />
+
+      <Input
+        label="Price (€)"
+        value={price}
+        onChangeText={setPrice}
+        placeholder="e.g. 14.99"
+        keyboardType="decimal-pad"
+      />
+
+      <View style={styles.dateFieldContainer}>
+        <Text style={styles.dateFieldLabel}>Bought At</Text>
+        <Pressable
+          style={({ pressed }) => [styles.dateField, pressed && styles.dateFieldPressed]}
+          onPress={() => setShowBoughtAtPicker(true)}
+        >
+          <Text style={[styles.dateFieldValue, !boughtAt && styles.dateFieldPlaceholder]}>
+            {boughtAt ? formatFullDate(boughtAt) : "Select date…"}
+          </Text>
+          <Text style={styles.dateFieldChevron}>›</Text>
+        </Pressable>
+      </View>
+
+      <DatePickerSheet
+        visible={showBoughtAtPicker}
+        title="Bought At"
+        mode="date"
+        value={boughtAt}
+        onDone={setBoughtAt}
+        onClear={() => setBoughtAt(null)}
+        onClose={() => setShowBoughtAtPicker(false)}
+      />
+
+      <View style={styles.ratingContainer}>
+        <Text style={styles.ratingLabel}>Rating</Text>
+        <View style={styles.stars}>
+          {[1, 2, 3, 4, 5].map((star) => (
+            <Pressable
+              key={star}
+              onPress={() => setRating(rating === star ? null : star)}
+              hitSlop={4}
+            >
+              <Text style={[styles.star, rating != null && star <= rating && styles.starFilled]}>
+                ★
+              </Text>
+            </Pressable>
+          ))}
+        </View>
+      </View>
+
+      <View style={styles.notesContainer}>
+        <Text style={styles.notesLabel}>Notes</Text>
+        <TextInput
+          style={styles.notesInput}
+          value={notes}
+          onChangeText={setNotes}
+          placeholder="Add notes..."
+          placeholderTextColor="#94a3b8"
+          multiline
+          numberOfLines={4}
+          textAlignVertical="top"
+        />
+      </View>
+
       <Button
         title={initialData ? "Save Changes" : "Add Comic"}
         onPress={handleSubmit}
@@ -364,5 +508,82 @@ const styles = StyleSheet.create({
     color: "#ef4444",
     fontWeight: "600",
     fontSize: 16,
+  },
+  dateFieldContainer: {
+    marginBottom: 16,
+  },
+  dateFieldLabel: {
+    fontSize: 14,
+    fontWeight: "600",
+    color: "#374151",
+    marginBottom: 6,
+  },
+  dateField: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    borderWidth: 1,
+    borderColor: "#d1d5db",
+    borderRadius: 10,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+    backgroundColor: "#ffffff",
+    minHeight: 48,
+  },
+  dateFieldPressed: {
+    backgroundColor: "#f9fafb",
+  },
+  dateFieldValue: {
+    fontSize: 16,
+    color: "#0f172a",
+    flex: 1,
+  },
+  dateFieldPlaceholder: {
+    color: "#94a3b8",
+  },
+  dateFieldChevron: {
+    fontSize: 20,
+    color: "#94a3b8",
+    marginLeft: 8,
+  },
+  ratingContainer: {
+    marginBottom: 16,
+  },
+  ratingLabel: {
+    fontSize: 14,
+    fontWeight: "600",
+    color: "#374151",
+    marginBottom: 8,
+  },
+  stars: {
+    flexDirection: "row",
+    gap: 6,
+  },
+  star: {
+    fontSize: 32,
+    color: "#d1d5db",
+  },
+  starFilled: {
+    color: "#f59e0b",
+  },
+  notesContainer: {
+    marginBottom: 16,
+  },
+  notesLabel: {
+    fontSize: 14,
+    fontWeight: "600",
+    color: "#374151",
+    marginBottom: 6,
+  },
+  notesInput: {
+    borderWidth: 1,
+    borderColor: "#d1d5db",
+    borderRadius: 10,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+    fontSize: 16,
+    color: "#0f172a",
+    backgroundColor: "#ffffff",
+    minHeight: 120,
   },
 });

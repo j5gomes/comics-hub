@@ -130,6 +130,21 @@ ALTER TABLE \`authors_rebuild\` RENAME TO \`authors\`;`;
 const m0006 = `
 ALTER TABLE \`publishers\` ADD COLUMN \`logo_local\` text;`;
 
+const m0007 = `
+ALTER TABLE \`comics\` ADD COLUMN \`published_at\` text;
+--> statement-breakpoint
+ALTER TABLE \`comics\` ADD COLUMN \`price\` real;
+--> statement-breakpoint
+ALTER TABLE \`comics\` ADD COLUMN \`rating\` integer;
+--> statement-breakpoint
+ALTER TABLE \`comics\` ADD COLUMN \`notes\` text;
+--> statement-breakpoint
+ALTER TABLE \`comics\` ADD COLUMN \`binding\` text;
+--> statement-breakpoint
+ALTER TABLE \`comics\` ADD COLUMN \`bought_at\` text;
+--> statement-breakpoint
+ALTER TABLE \`comics\` ADD COLUMN \`page_count\` integer;`;
+
 export default {
   journal: {
     entries: [
@@ -140,6 +155,7 @@ export default {
       { idx: 4, when: 1714400000, tag: "0004_fix_authors_roles", breakpoints: true },
       { idx: 5, when: 1714500000, tag: "0005_series", breakpoints: true },
       { idx: 6, when: 1714600000, tag: "0006_publisher_logo", breakpoints: true },
+      { idx: 7, when: 1714700000, tag: "0007_comics_extra_fields", breakpoints: true },
     ],
   },
   migrations: {
@@ -150,5 +166,6 @@ export default {
     m0004,
     m0005,
     m0006,
+    m0007,
   },
 };

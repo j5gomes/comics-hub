@@ -21,6 +21,9 @@ export function useSeriesList() {
           cover_image_local: comics.cover_image_local,
           volume_number: comics.volume_number,
           comic_type: comics.comic_type,
+          rating: comics.rating,
+          price: comics.price,
+          page_count: comics.page_count,
         })
         .from(comics)
         .where(and(isNull(comics.deleted_at), isNotNull(comics.series_id)))
@@ -30,6 +33,10 @@ export function useSeriesList() {
       const coversMap: Record<string, string[]> = {};
       const countMap: Record<string, number> = {};
       const typesMap: Record<string, Set<string>> = {};
+      const ratingMap: Record<string, { sum: number; count: number }> = {};
+      const priceMap: Record<string, number> = {};
+      const pageCountMap: Record<string, number> = {};
+
       for (const comic of seriesComics) {
         if (!comic.series_id) continue;
         countMap[comic.series_id] = (countMap[comic.series_id] ?? 0) + 1;
@@ -39,6 +46,17 @@ export function useSeriesList() {
         }
         if (!typesMap[comic.series_id]) typesMap[comic.series_id] = new Set();
         typesMap[comic.series_id].add(comic.comic_type);
+        if (comic.rating != null) {
+          if (!ratingMap[comic.series_id]) ratingMap[comic.series_id] = { sum: 0, count: 0 };
+          ratingMap[comic.series_id].sum += comic.rating;
+          ratingMap[comic.series_id].count++;
+        }
+        if (comic.price != null) {
+          priceMap[comic.series_id] = (priceMap[comic.series_id] ?? 0) + comic.price;
+        }
+        if (comic.page_count != null) {
+          pageCountMap[comic.series_id] = (pageCountMap[comic.series_id] ?? 0) + comic.page_count;
+        }
       }
 
       return seriesList.map((s) => ({
@@ -46,6 +64,11 @@ export function useSeriesList() {
         covers: coversMap[s.id] ?? [],
         volumeCount: countMap[s.id] ?? 0,
         comicTypes: Array.from(typesMap[s.id] ?? []),
+        averageRating: ratingMap[s.id]
+          ? Math.round((ratingMap[s.id].sum / ratingMap[s.id].count) * 10) / 10
+          : null,
+        totalPrice: s.id in priceMap ? priceMap[s.id] : null,
+        totalPageCount: s.id in pageCountMap ? pageCountMap[s.id] : null,
       }));
     },
   });

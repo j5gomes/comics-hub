@@ -176,6 +176,24 @@ export default function SeriesDetailScreen() {
   ];
   const volumeCount = volumes?.length ?? 0;
 
+  const ratedVolumes = volumes?.filter((v) => v.rating != null) ?? [];
+  const averageRating =
+    ratedVolumes.length > 0
+      ? Math.round((ratedVolumes.reduce((s, v) => s + v.rating!, 0) / ratedVolumes.length) * 10) / 10
+      : null;
+
+  const pricedVolumes = volumes?.filter((v) => v.price != null) ?? [];
+  const totalPrice =
+    pricedVolumes.length > 0
+      ? pricedVolumes.reduce((s, v) => s + v.price!, 0)
+      : null;
+
+  const pagedVolumes = volumes?.filter((v) => v.page_count != null) ?? [];
+  const totalPageCount =
+    pagedVolumes.length > 0
+      ? pagedVolumes.reduce((s, v) => s + v.page_count!, 0)
+      : null;
+
   return (
     <>
       <ScrollView
@@ -226,6 +244,18 @@ export default function SeriesDetailScreen() {
             label="Publisher"
             value={publisherName}
             onPress={() => setPickerOpen(true)}
+          />
+          <DetailRow
+            label="Avg. Rating"
+            value={averageRating != null ? `${averageRating} / 5` : ""}
+          />
+          <DetailRow
+            label="Total Price"
+            value={totalPrice != null ? `€${totalPrice.toFixed(2)}` : ""}
+          />
+          <DetailRow
+            label="Total Pages"
+            value={totalPageCount != null ? totalPageCount.toLocaleString() : ""}
             last
           />
         </View>
